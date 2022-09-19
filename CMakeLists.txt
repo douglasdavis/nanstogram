@@ -20,16 +20,6 @@ endif()
 find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
 
 add_subdirectory(extern/nanobind)
-
-# Run `nanobind.cmake_dir()` from Python to detect install location
-execute_process(
-  COMMAND
-  "${PYTHON_EXECUTABLE}" -c "import nanobind; print(nanobind.cmake_dir())"
-  OUTPUT_VARIABLE _tmp_dir
-  OUTPUT_STRIP_TRAILING_WHITESPACE COMMAND_ECHO STDOUT)
-list(APPEND CMAKE_PREFIX_PATH "${_tmp_dir}")
-
-# Now import nanobind from CMake
 find_package(nanobind CONFIG REQUIRED)
 
 # Build the actual extension module

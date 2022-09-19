@@ -12,12 +12,7 @@ using namespace nb::literals;
 
 template <typename T>
 struct uniform_axis_t {
-  uniform_axis_t(size_t nb, T ami, T ama) {
-    nbins = nb;
-    amin = ami;
-    amax = ama;
-  };
-  size_t nbins;
+  int64_t nbins;
   T amin;
   T amax;
 };
@@ -32,26 +27,35 @@ void _f1d(int64_t* output,
           nb::tensor<T, nb::shape<nb::any>> x, uniform_axis_t<T> axis) {
   T norm = uanorm(axis);
   int64_t bin;
+  T x_i;
   for (size_t i = 0; i < x.shape(0); ++i) {
-    T xi = x(i);
-    if (xi < axis.amin) continue;
-    if (xi >= axis.amax) continue;
-    bin = static_cast<int64_t>((xi - axis.amin) * norm);
+    x_i = x(i);
+    if (x_i < axis.amin) continue;
+    if (x_i >= axis.amax) continue;
+    bin = static_cast<int64_t>((x_i - axis.amin) * norm);
     output[bin]++;
   }
 }
 
 template <typename T>
-nb::tensor<nb::numpy, int64_t, nb::shape<nb::any>> f1d(
-                                                       nb::tensor<T, nb::shape<nb::any>> x, int64_t nbins, T xmin, T xmax) {
-  int64_t* data = new int64_t[nbins];
-  std::memset(data, 0, nbins * sizeof(int64_t));
+T* zeros_1d(int64_t size) {
+  auto data = new T[size];
+  std::memset(data, 0, size * sizeof(T));
+  return data;
+}
+
+template <typename T>
+nb::tensor<nb::numpy, int64_t, nb::shape<nb::any>> f1d(nb::tensor<T, nb::shape<nb::any>> x,
+                                                       int64_t nbins,
+                                                       T xmin,
+                                                       T xmax) {
+  auto data = zeros_1d<int64_t>(nbins);
   size_t shape[1] = {static_cast<size_t>(nbins)};
-  auto axis = uniform_axis_t(nbins, xmin, xmax);
-  _f1d(data, x, axis);
-  nb::capsule owner(data, [](void *p) noexcept {
-    delete[] (int64_t *) p;
-  });
+  _f1d(data, x, {.nbins = nbins, .amax = xmax, .amin = xmin});
+  nb::capsule owner(
+    data,
+    [](void *p) noexcept { delete[] (int64_t *) p; }
+  );
   return nb::tensor<nb::numpy, int64_t, nb::shape<nb::any>>(data, 1, shape, owner);
 }
 
