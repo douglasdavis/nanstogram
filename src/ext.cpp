@@ -6,6 +6,8 @@
 #include <cstdio>
 #include <vector>
 
+#include <omp.h>
+
 namespace nb = nanobind;
 
 using namespace nb::literals;
@@ -37,6 +39,43 @@ void _f1d(int64_t* output,
   }
 }
 
+template <typename Tx, typename Te>
+int64_t calc_bin(Tx x, const std::vector<Te>& edges) {
+  auto s = std::distance(std::begin(edges),
+                         std::lower_bound(std::begin(edges), std::end(edges), x));
+  return static_cast<int64_t>(s) - 1;
+}
+
+template <typename Tx, typename Te>
+void _v1d(int64_t* output,
+          nb::tensor<Tx, nb::shape<nb::any>> x,
+          const std::vector<Te>& edges) {
+  int64_t nbins = edges.size() - 1;
+  auto amin = edges.front();
+  auto amax = edges.back();
+  auto nx = x.shape(0);
+#pragma omp parallel
+  {
+    std::vector<int64_t> values_ot(nbins, 0);
+    int64_t bin;
+    Tx x_i;
+#pragma omp for nowait
+    for (int64_t i = 0; i < nx; ++i) {
+      x_i = x(i);
+      if (x_i < amin) continue;
+      if (x_i >= amax) continue;
+      bin = calc_bin(x_i, edges);
+      values_ot[bin]++;
+    }
+#pragma omp critical
+    for (int64_t i = 0; i < nbins; ++i) {
+      output[i] += values_ot[i];
+    }
+  }
+}
+
+
+
 template <typename T>
 T* zeros_1d(int64_t size) {
   auto data = new T[size];
@@ -54,11 +93,31 @@ nb::tensor<nb::numpy, int64_t, nb::shape<nb::any>> f1d(nb::tensor<T, nb::shape<n
   _f1d(data, x, {.nbins = nbins, .amax = xmax, .amin = xmin});
   nb::capsule owner(
     data,
-    [](void *p) noexcept { delete[] (int64_t *) p; }
+    [](void *p) noexcept { delete[] (int64_t*)p; }
+  );
+  return nb::tensor<nb::numpy, int64_t, nb::shape<nb::any>>(data, 1, shape, owner);
+}
+
+
+template <typename T>
+nb::tensor<nb::numpy, int64_t, nb::shape<nb::any>> v1d(nb::tensor<T, nb::shape<nb::any>> x,
+                                                       nb::tensor<double, nb::shape<nb::any>> edges) {
+  auto nedges =  edges.shape(0);
+  auto nbins = nedges - 1;
+  std::vector<double> edges_v(reinterpret_cast<double*>(edges.data()),
+                              reinterpret_cast<double*>(edges.data()) + nedges);
+
+  auto data = zeros_1d<int64_t>(nbins);
+  size_t shape[1] = {static_cast<size_t>(nbins)};
+  _v1d(data, x, edges_v);
+  nb::capsule owner(
+    data,
+    [](void *p) noexcept { delete[] (int64_t*)p; }
   );
   return nb::tensor<nb::numpy, int64_t, nb::shape<nb::any>>(data, 1, shape, owner);
 }
 
 NB_MODULE(ext, m) {
   m.def("f1d", &f1d<double>, "x", "nbins", "xmin", "xmax");
+  m.def("v1d", &v1d<double>, "x", "edges");
 }

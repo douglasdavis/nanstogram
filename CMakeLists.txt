@@ -1,5 +1,5 @@
-project(nanogram)
 cmake_minimum_required(VERSION 3.18...3.22)
+project(nanogram LANGUAGES CXX)
 
 if (NOT SKBUILD)
   set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -28,6 +28,10 @@ nanobind_add_module(
   NB_STATIC # Build static libnanobind (the extension module itself remains a shared library)
   src/ext.cpp
 )
+
+find_package(OpenMP REQUIRED)
+
+target_link_libraries(ext PUBLIC OpenMP::OpenMP_CXX)
 
 # Install directive for scikit-build
 install(TARGETS ext LIBRARY DESTINATION .)
