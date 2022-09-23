@@ -1,25 +1,13 @@
-import os
-import re
-import sys
+from skbuild import setup
 
-try:
-    from skbuild import setup
-except ImportError:
-    print(
-        "The preferred way to invoke 'setup.py' is via pip, as in 'pip "
-        "install .'. If you wish to run the setup script directly, you must "
-        "first install the build dependencies listed in pyproject.toml!",
-        file=sys.stderr,
-    )
-    raise
 
 setup(
-    name="nanogram",
+    name="nanstogram",
     version="0.0.1",
     license="BSD",
-    packages=["nanogram"],
+    packages=["nanstogram"],
     package_dir={"": "src"},
-    cmake_install_dir="src/nanogram",
+    cmake_install_dir="src/nanstogram",
     include_package_data=True,
     python_requires=">=3.8",
 )

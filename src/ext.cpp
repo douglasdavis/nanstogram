@@ -117,7 +117,7 @@ nb::tensor<nb::numpy, int64_t, nb::shape<nb::any>> v1d(nb::tensor<T, nb::shape<n
   return nb::tensor<nb::numpy, int64_t, nb::shape<nb::any>>(data, 1, shape, owner);
 }
 
-NB_MODULE(ext, m) {
+NB_MODULE(_ext, m) {
   m.def("f1d", &f1d<double>, "x", "nbins", "xmin", "xmax");
   m.def("v1d", &v1d<double>, "x", "edges");
 }
